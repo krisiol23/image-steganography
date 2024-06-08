@@ -63,6 +63,12 @@ private:
 
 public:
     auto readFile(std::string const &path) {
+        if(access(path.c_str(), R_OK) != 0)
+        {
+            fmt::println("You don't have read access");
+            exit(EXIT_FAILURE);
+        }
+
         auto file = std::fstream(path, std::ios::in | std::ios::binary);
 
         if (!file.is_open()) {
@@ -104,7 +110,7 @@ public:
 
     auto encode(std::string txt) {
         auto binaryText = std::string();
-        txt+='$';
+        txt = txt.append("{pjc}");
         for (auto ch: txt) {
             binaryText += std::bitset<8>(ch).to_string();
         }
@@ -139,16 +145,53 @@ public:
                 auto binC = std::bitset<8>(color).to_string();
                 temp += binC.back();
                 bits++;
-                if(text.back() == '$') {
-                    flag = true;
+
+                if(text.size() > 5) {
+                    auto end = text.end() - 5;
+                    if (text.substr(text.find(*end), 5) == "{pjc}") {
+                        flag = true;
+                    }
                 }
             }
             if(flag)
                 break;
         }
+        if(flag) {
+            text.erase(text.end() - 5, text.end());
+            return text;
+        }
+        else {
+            return "Error cannot decode message";
+        }
+    }
 
-        text.pop_back();
-        return text;
+    auto checkMess() -> bool {
+        auto text = std::string();
+        auto temp = std::string();
+        auto bits = 0;
+        auto flag = false;
+
+        for (auto const &pixel: pixelsArray) {
+            for (auto color: pixel) {
+                if (bits == 8) {
+                    text += (char) toDecimal(stoi(temp));
+                    temp = "";
+                    bits = 0;
+                }
+                auto binC = std::bitset<8>(color).to_string();
+                temp += binC.back();
+                bits++;
+                if(text.size() > 5) {
+                    auto end = text.end() - 5;
+                    if (text.substr(text.find(*end), 5) == "{pjc}") {
+                        flag = true;
+                    }
+                }
+            }
+            if(flag)
+                break;
+        }
+        return flag;
     }
 
     auto getFileSize() const -> long long {
@@ -234,7 +277,6 @@ public:
 struct PPM
 {
 private:
-    long long fileSize;
     unsigned long long messLen;
     std::vector<std::string> vec;
     std::string pathFile;
@@ -243,8 +285,13 @@ private:
 public:
     auto readFile(std::string const &path)
     {
+        if(access(path.c_str(), R_OK) != 0)
+        {
+            fmt::println("You don't have read access");
+            exit(EXIT_FAILURE);
+        }
+
         auto file = std::fstream(path, std::ios::in);
-        fileSize = file.tellg();
         pathFile = path;
 
         if (!file.is_open()) {
@@ -282,7 +329,7 @@ public:
     auto encode(std::string txt)
     {
         auto binaryText = std::string();
-        txt+='$';
+        txt = txt.append("{pjc}");
         for (auto ch: txt) {
             binaryText += std::bitset<8>(ch).to_string();
         }
@@ -323,7 +370,7 @@ public:
         }
     }
 
-    auto decode()
+    auto decode() -> std::string
     {
         auto text = std::string();
         auto temp = std::string();
@@ -351,8 +398,61 @@ public:
                         temp += binC.back();
                         bits++;
                     }
-                    if(text.back() == '$') {
-                        flag = true;
+                    if(text.size() > 5) {
+                        auto end = text.end() - 5;
+                        if (text.substr(text.find(*end), 5) == "{pjc}") {
+                            flag = true;
+                        }
+                    }
+                    num = "";
+                }
+            }
+            if(flag)
+                break;
+        }
+        if(flag) {
+            text.erase(text.end() - 5, text.end());
+            return text;
+        }
+        else
+        {
+            return "Error cannot decode message";
+        }
+    }
+
+    auto checkMess()-> bool
+    {
+        auto text = std::string();
+        auto temp = std::string();
+        auto bits = 0;
+        auto flag = false;
+
+        for(int i = 4; i < vec.size(); i++)
+        {
+            std::string num;
+            for(int j = 0; j <=  vec[i].size(); j++)
+            {
+                if(isdigit(vec[i][j]))
+                {
+                    num+=vec[i][j];
+                }
+                else
+                {
+                    if(!num.empty()) {
+                        if (bits == 8) {
+                            text += (char) toDecimal(stoi(temp));
+                            temp = "";
+                            bits = 0;
+                        }
+                        auto binC = std::bitset<8>(std::stoi( num)).to_string();
+                        temp += binC.back();
+                        bits++;
+                    }
+                    if(text.size() > 5) {
+                        auto end = text.end() - 5;
+                        if (text.substr(text.find(*end), 5) == "{pjc}") {
+                            flag = true;
+                        }
                     }
                     num = "";
                 }
@@ -361,9 +461,7 @@ public:
                 break;
         }
 
-        text.pop_back();
-        text.pop_back();
-        return text;
+        return flag;
     }
 
     auto getMesslen() const -> unsigned  long long
@@ -424,8 +522,6 @@ auto checkExt(std::string const &path) -> bool
 }
 
 auto main(int argc, char** argv) -> int {
-
-    //fmt::println("{}",argv[1]);
 //    auto path = std::string("C:\\Users\\Krystian\\Desktop\\Studia\\pjc\\steganography_pjc\\snail.bmp");
 //    auto path = std::string("C:\\Users\\Krystian\\Desktop\\Studia\\pjc\\steganography_pjc\\test.bmp");
 //    auto path = std::string("C:\\Users\\Krystian\\Desktop\\Studia\\pjc\\steganography_pjc\\sines.ppm");
@@ -441,8 +537,8 @@ auto main(int argc, char** argv) -> int {
 //        ppm.readFile(path);
 //        ppm.encode("basia");
 //        ppm.writeFile();
-//       fmt::println("{}", ppm.decode());
-//    fmt::println("{}",argv[1]);
+//       fmt::println("{}", ppm.checkMess());
+
     if(strcmp(argv[1],"-i") == 0 || strcmp(argv[1], "-info") == 0)
     {
         if(argc >3)
@@ -457,7 +553,7 @@ auto main(int argc, char** argv) -> int {
                 bmp.readFile(argv[2]);
                 fmt::println("File size: {} B", bmp.getFileSize());
                 fmt::println("File resolution: {} {}",  bmp.getImgWidth(), bmp.getImgHeight());
-                fmt::println("File resolution: {} {}",  bmp.getImgWidth(), bmp.getImgHeight());
+//                fmt::println("Last modified: {} {}",  );
             }
             else if(checkFormat(argv[2]) == format::PPM)
             {
@@ -551,6 +647,14 @@ auto main(int argc, char** argv) -> int {
                 {
                     fmt::println("Message cannot be written in the file");
                 }
+                if(bmp.checkMess())
+                {
+                    fmt::println("Hidden message can be in that image");
+                }
+                else
+                {
+                    fmt::println("Hidden message cannot be in that image");
+                }
             }
             else if(checkFormat(argv[2]) == format::PPM)
             {
@@ -563,6 +667,14 @@ auto main(int argc, char** argv) -> int {
                 else
                 {
                     fmt::println("Message cannot be written in the file");
+                }
+                if(ppm.checkMess())
+                {
+                    fmt::println("Hidden message can be in that image");
+                }
+                else
+                {
+                    fmt::println("Hidden message cannot be in that image");
                 }
             }
         }
