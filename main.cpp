@@ -7,7 +7,6 @@
 #include <bitset>
 #include <fmt/ostream.h>
 #include <filesystem>
-#include <fmt/chrono.h>
 #include <chrono>
 //https://www.youtube.com/watch?v=NcEE5xmpgQ0
 
@@ -60,6 +59,7 @@ private:
     unsigned long long messLen;
     int width;
     int height;
+    std::string pathFile;
 
 public:
     auto readFile(std::string const &path) {
@@ -68,7 +68,7 @@ public:
             fmt::println("You don't have read access");
             exit(EXIT_FAILURE);
         }
-
+        pathFile = path;
         auto file = std::fstream(path, std::ios::in | std::ios::binary);
 
         if (!file.is_open()) {
@@ -210,6 +210,13 @@ public:
     auto getImgHeight() const ->int
     {
         return height;
+    }
+
+    auto getLastModDate()
+    {
+        auto file = std::filesystem::path(pathFile);
+        std::filesystem::file_time_type time = std::filesystem::last_write_time(file);
+        return time;
     }
 };
 
@@ -483,7 +490,7 @@ public:
     auto getLastModDate()
     {
         auto file = std::filesystem::path(pathFile);
-        auto time = std::filesystem::last_write_time(file);
+        std::filesystem::file_time_type time = std::filesystem::last_write_time(file);
         return time;
     }
 };
@@ -553,7 +560,7 @@ auto main(int argc, char** argv) -> int {
                 bmp.readFile(argv[2]);
                 fmt::println("File size: {} B", bmp.getFileSize());
                 fmt::println("File resolution: {} {}",  bmp.getImgWidth(), bmp.getImgHeight());
-//                fmt::println("Last modified: {} {}",  );
+                std::cout << std::format("File write time is {}\n", bmp.getLastModDate());  //https://en.cppreference.com/w/cpp/filesystem/last_write_time
             }
             else if(checkFormat(argv[2]) == format::PPM)
             {
@@ -561,7 +568,7 @@ auto main(int argc, char** argv) -> int {
                 ppm.readFile(argv[2]);
                 fmt::println("File size: {} B", ppm.getFileSize());
                 fmt::println("File resolution: {}", ppm.getHeightWidth());
-//                fmt::println("Last modified: {}", ppm.getLastModDate());
+                std::cout << std::format("File write time is {}\n", ppm.getLastModDate());
             }
         }
         else
