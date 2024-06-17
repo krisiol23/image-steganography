@@ -16,5 +16,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(fmt)
 
-add_executable(steganography_pjc main.cpp)
+add_executable(steganography_pjc main.cpp
+        formats.h)
 target_link_libraries(steganography_pjc fmt)
